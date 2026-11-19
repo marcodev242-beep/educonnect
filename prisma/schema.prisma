@@ -1,0 +1,233 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Valeurs persistées dans transactions.type_utilisateur : 1 public, 2 enseignant, 3 école.
+
+// 1. Table des niveaux
+model Classe {
+  id_classe  String @id @map("id_classe")
+  nom_classe String @map("nom_classe")
+  cycle      String @map("cycle")
+  code_classe String @unique @map("code_classe")
+  
+  // Relations
+  sujets     Sujet[]
+  // relations many-to-many via ClasseMatiere
+  matieres   ClasseMatiere[]
+
+  @@map("niveaux")
+}
+
+// 2. Table des matières
+model Matiere {
+  id_matiere  String @id @map("id_matiere")
+  nom_matiere String @map("nom_matiere")
+  code_matiere String @unique @map("code_matiere")
+  
+  // Relations
+  sujets      Sujet[]
+  // relations many-to-many via ClasseMatiere
+  classes     ClasseMatiere[]
+
+  @@map("matieres")
+}
+
+// 3. Établissements Scolaires (Écoles)
+model Etablissement {
+  id_etablissement      String     @id @default(dbgenerated("'EC' || lpad(nextval('etablissements_id_seq')::text, 9, '0')")) @map("id_etablissement")
+  nom_etablissement     String     @map("nom_etablissement")
+  numero_agrement       String?    @unique @map("numero_agrement")
+  email_officiel        String     @unique @map("email_officiel")
+  mot_de_passe          String     @map("mot_de_passe")
+  telephone_contact     String?    @map("telephone_contact")
+  ville                 String     @default("Brazzaville") @map("ville")
+  fuseau_horaire        String     @default("Africa/Brazzaville") @map("fuseau_horaire")
+  code_verification_otp String?    @map("code_verification_otp")
+  est_verifie           Boolean    @default(false) @map("est_verifie")
+  date_creation         DateTime   @default(now()) @db.Timestamptz @map("date_creation")
+
+  // Relations
+  utilisateurs          Utilisateur[]
+  sujets                Sujet[]
+  transactions          Transaction[]
+  abonnements           Abonnement[]
+
+  @@map("etablissements")
+}
+
+// 4. Table globale des utilisateurs
+model Utilisateur {
+  id_utilisateur   String         @id @default(dbgenerated("'US' || lpad(nextval('utilisateurs_id_seq')::text, 9, '0')")) @map("id_utilisateur")
+  nom              String         @map("nom")
+  prenom           String         @map("prenom")
+  email            String         @unique @map("email")
+  telephone        String?        @map("telephone")
+  mot_de_passe     String         @map("mot_de_passe")
+  role             String         @map("role") // 'Enseignant', 'Administrateur', 'Élève'
+  date_creation    DateTime       @default(now()) @db.Timestamptz @map("date_creation")
+
+  // Liaison à l'école
+  id_etablissement String?        @map("id_etablissement")
+  etablissement    Etablissement? @relation(fields: [id_etablissement], references: [id_etablissement], onDelete: SetNull)
+
+  // Relations
+  profilEnseignant ProfilEnseignant?
+  sujetsCrees      Sujet[]
+  transactionsUtilisateur Transaction[] @relation("TransactionUtilisateur")
+  paiements        Paiement[]
+
+  @@map("utilisateurs")
+}
+
+// 5. Table des profils enseignants (Relation 1-to-1 avec Utilisateur)
+model ProfilEnseignant {
+  id_utilisateur      String      @id @map("id_utilisateur")
+  utilisateur         Utilisateur @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade)
+  cycle               String      @map("cycle") // 'Collège' ou 'Lycée'
+  matiere_principale  String      @map("matiere_principale")
+  solde_gagne         Decimal     @default(0.00) @db.Decimal(10, 2) @map("solde_gagne")
+  statut_approbation  String      @default("EN_ATTENTE") @map("statut_approbation") // 'EN_ATTENTE', 'VALIDE', 'REJETE'
+  photo_url           String?     @map("photo_url")
+  biographie          String?     @default("") @map("biographie")
+  telephone           String?     @default("") @map("telephone")
+  retraits            RetraitEnseignant[]
+
+  @@map("profils_enseignants")
+}
+
+model RetraitEnseignant {
+  id_retrait       String          @id @default(dbgenerated("'RT' || lpad(nextval('retraits_enseignants_id_seq')::text, 9, '0')")) @map("id_retrait")
+  id_enseignant    String          @map("id_enseignant")
+  enseignant       ProfilEnseignant @relation(fields: [id_enseignant], references: [id_utilisateur], onDelete: Cascade)
+  montant          Decimal         @db.Decimal(10, 2) @map("montant")
+  numero_mobile    String          @map("numero_mobile")
+  statut           String          @default("EN_ATTENTE") @map("statut")
+  motif_rejet      String?         @map("motif_rejet")
+  date_demande     DateTime        @default(now()) @db.Timestamptz @map("date_demande")
+  date_traitement  DateTime?       @db.Timestamptz @map("date_traitement")
+
+  @@index([id_enseignant, date_demande])
+  @@index([statut, date_demande])
+  @@map("retraits_enseignants")
+}
+
+// 6. Table des sujets
+model Sujet {
+  id_sujet           String        @id @default(dbgenerated("'DOC' || lpad(nextval('sujets_id_seq')::text, 9, '0')")) @map("id_sujet")
+  titre              String        @map("titre")
+  description        String?       @default("") @map("description")
+  type_document      String        @map("type_document") // 'Cours', 'Devoir', 'Composition'
+  url_fichier        String        @default("#") @map("url_fichier")
+  prix               Decimal       @default(0.00) @db.Decimal(10, 2) @map("prix")
+  statut             String        @default("EN_ATTENTE") @map("statut") // 'EN_ATTENTE', 'VALIDE', 'REJETE'
+  motif_refus        String?       @default("") @map("motif_refus")
+  periode            String?       @default("") @map("periode")
+  reference_sujet    String        @unique @map("reference_sujet")
+  date_televersement DateTime      @default(now()) @db.Timestamptz @map("date_televersement")
+
+  // Relations obligatoires / clés étrangères
+  id_enseignant      String        @map("id_enseignant")
+  enseignant         Utilisateur   @relation(fields: [id_enseignant], references: [id_utilisateur], onDelete: Cascade)
+
+  id_etablissement   String?       @map("id_etablissement")
+  etablissement      Etablissement? @relation(fields: [id_etablissement], references: [id_etablissement], onDelete: Cascade)
+
+  id_classe          String        @map("id_classe")
+  classe             Classe        @relation(fields: [id_classe], references: [id_classe])
+
+  id_matiere         String        @map("id_matiere")
+  matiere            Matiere       @relation(fields: [id_matiere], references: [id_matiere])
+
+  // Relations vers transactions
+  transactions       Transaction[]
+  paiements          Paiement[]
+
+  @@map("sujets")
+}
+
+// 7. Table des Transactions Mobile Money (Achat de sujets)
+model Transaction {
+  id_transaction   String      @id @default(dbgenerated("gen_random_uuid()::text")) @map("id_transaction")
+  montant          Decimal     @db.Decimal(10, 2) @map("montant")
+  type_utilisateur Int         @map("type_utilisateur") // 1: public, 2: enseignant, 3: ecole
+  statut_paiement  String      @default("1") @map("statut_paiement") // Codes YabisoPay bruts (1, 2, 3, 200)
+  ref_externe      String?     @unique @map("ref_externe")
+  ref_interne      String      @unique @map("ref_interne")
+  reference_groupe String?     @map("reference_groupe")
+  reference_sujet  String      @map("reference_sujet")
+  ref_operateur    String?     @map("ref_operateur")
+  msisdn           String?     @map("msisdn")
+  date_achat       DateTime    @default(now()) @db.Timestamptz @map("date_achat")
+
+  // Relations
+  id_utilisateur   String?     @map("id_utilisateur")
+  utilisateur      Utilisateur? @relation("TransactionUtilisateur", fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade)
+  id_etablissement String?     @map("id_etablissement")
+  etablissement    Etablissement? @relation(fields: [id_etablissement], references: [id_etablissement], onDelete: Cascade)
+
+  id_sujet         String      @map("id_sujet")
+  sujet            Sujet       @relation(fields: [id_sujet], references: [id_sujet], onDelete: Cascade)
+
+  @@index([reference_groupe])
+  @@map("transactions")
+}
+
+// 8. Table generale des paiements (achats par eleves et enseignants)
+model Paiement {
+  id_paiement      String      @id @default(dbgenerated("'PA' || lpad(nextval('paiements_id_seq')::text, 9, '0')")) @map("id_paiement")
+  type_utilisateur String      @map("type_utilisateur")
+  date_paiement    DateTime    @default(now()) @db.Timestamptz @map("date_paiement")
+  numero_achat     String      @map("numero_achat")
+  reference        String      @unique @map("reference")
+  montant          Decimal     @default(0.00) @db.Decimal(10, 2) @map("montant")
+
+  id_utilisateur   String      @map("id_utilisateur")
+  utilisateur      Utilisateur @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade)
+
+  id_sujet         String      @map("id_sujet")
+  sujet            Sujet       @relation(fields: [id_sujet], references: [id_sujet], onDelete: Cascade)
+
+  @@map("paiements")
+}
+
+model Abonnement {
+  id_abonnement    String        @id @default(dbgenerated("'AB' || lpad(nextval('abonnements_id_seq')::text, 9, '0')")) @map("id_abonnement")
+  id_etablissement String        @map("id_etablissement")
+  etablissement    Etablissement @relation(fields: [id_etablissement], references: [id_etablissement], onDelete: Cascade)
+  plan             String        @default("Mensuel")
+  date_debut      DateTime      @map("date_debut")
+  date_fin        DateTime      @map("date_fin")
+  fuseau_horaire   String        @default("Africa/Brazzaville") @map("fuseau_horaire")
+  statut           String        @default("ACTIVE")
+  date_creation    DateTime      @default(now()) @db.Timestamptz @map("date_creation")
+
+  @@index([id_etablissement, date_fin])
+  @@map("abonnements")
+}
+
+// Table de liaison many-to-many entre classes et matieres
+model ClasseMatiere {
+  id_classe  String @map("id_classe")
+  id_matiere String @map("id_matiere")
+
+  classe  Classe  @relation(fields: [id_classe], references: [id_classe], onDelete: Cascade)
+  matiere Matiere @relation(fields: [id_matiere], references: [id_matiere], onDelete: Cascade)
+
+  @@id([id_classe, id_matiere])
+  @@map("classes_matieres")
+}
+
+model Reference {
+  type_reference String   @map("type_reference")
+  valeur         String   @map("valeur")
+  date_creation  DateTime @default(now()) @db.Timestamptz @map("date_creation")
+
+  @@id([type_reference, valeur])
+  @@map("reference")
+}

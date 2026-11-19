@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: educonnect-congo
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+      - key: PG_POOL_MAX
+        value: "5"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ESCHOOL_MERCHANT_ID
+        sync: false
+      - key: ESCHOOL_MERCHANT_NAME
+        sync: false
+      - key: ESCHOOL_CALLBACK_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: AUTH_EMAIL_FROM
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_TEMPLATE_NAME
+        sync: false
+      - key: ADMIN_SETUP_SECRET
+        sync: false
+    disk:
+      name: educonnect-uploads
+      mountPath: /var/data
+      sizeGB: 1
