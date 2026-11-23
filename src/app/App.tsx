@@ -19,7 +19,6 @@ import { StudentProfilePage } from "./pages/StudentProfilePage";
 import { ExamCatalogPage } from "./pages/ExamCatalogPage";
 import { ExamDetailPage } from "./pages/ExamDetailPage";
 import { StudentExamsPage } from "./pages/StudentExamsPage";
-import { StudentExamSessionPage } from "./pages/StudentExamSessionPage";
 import { TeacherExamsPage } from "./pages/TeacherExamsPage";
 import { AuthMode, AuthUser, CatalogData, Paper, UserRole, ViewAll as View, CatalogClass, CatalogSubject, CatalogStats, PurchaseHistoryItem } from "./types";
 
@@ -32,7 +31,6 @@ export default function App() {
   const [view, setView] = useState<View>("home");
   const [authOpen, setAuthOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<AuthMode>("login");
-  const [authStartError, setAuthStartError] = useState("");
   const [loggedInAs, setLoggedInAs] = useState<UserRole | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [paymentPaper, setPaymentPaper] = useState<Paper | null>(null);
@@ -63,22 +61,10 @@ export default function App() {
   const [catalogError, setCatalogError] = useState("");
   const AUTH_STORAGE_KEY = "educonnect-auth-user";
   const CART_STORAGE_KEY_PREFIX = "educonnect-cart-";
-  const protectedViews: View[] = ["student", "teacher", "school", "admin", "student-profile", "exams-catalog", "exam-detail", "exam-session", "student-exams", "teacher-exams", "create-exam"];
+  const protectedViews: View[] = ["student", "teacher", "school", "admin", "student-profile", "exams-catalog", "exam-detail", "student-exams", "teacher-exams", "create-exam"];
   const [schoolSubscriptionActive, setSchoolSubscriptionActive] = useState(false);
   const isHandlingPopState = useRef(false);
   const hasPushedInitialView = useRef(false);
-
-  useEffect(() => {
-    const reportMissingRequiredField = (event: Event) => {
-      const field = event.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
-      if (!field?.willValidate) return;
-      field.setAttribute("aria-invalid", "true");
-      toast.error(field.validationMessage || "Veuillez renseigner ce champ obligatoire.");
-      window.setTimeout(() => field.removeAttribute("aria-invalid"), 2500);
-    };
-    document.addEventListener("invalid", reportMissingRequiredField, true);
-    return () => document.removeEventListener("invalid", reportMissingRequiredField, true);
-  }, []);
 
   useEffect(() => {
     window.history.replaceState({ ...window.history.state, educonnectView: view }, "", window.location.href);
@@ -153,25 +139,19 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const googleError = params.get('google_error')
     if (googleError) {
-      setAuthStartError(googleError)
-      setAuthModalMode('login')
-      setAuthOpen(true)
+      setCatalogError(googleError)
       window.history.replaceState({ ...window.history.state, educonnectView: view }, '', window.location.pathname)
       return
     }
     if (params.get('google') !== 'success') return
     window.history.replaceState({ ...window.history.state, educonnectView: view }, '', window.location.pathname)
-    fetch(apiUrl('/api/auth/me'), { credentials: 'include' })
+    fetch('/api/auth/me')
       .then(response => {
         if (!response.ok) throw new Error('Session Google introuvable')
         return response.json()
       })
       .then(data => handleLogin(data.user as AuthUser))
-      .catch(error => {
-        setAuthStartError(error instanceof Error ? error.message : 'Connexion Google impossible')
-        setAuthModalMode('login')
-        setAuthOpen(true)
-      })
+      .catch(error => setCatalogError(error instanceof Error ? error.message : 'Connexion Google impossible'))
   }, [])
 
   useEffect(() => {
@@ -272,7 +252,6 @@ export default function App() {
   }, [])
 
   const handleLogin = async (user: AuthUser) => {
-    setAuthStartError("");
     setAuthUser(user);
     setLoggedInAs(user.role);
     setShouldRedirectTeacherAfterLogin(false);
@@ -319,7 +298,6 @@ export default function App() {
   };
 
   const handleOpenAuth = (mode: AuthMode) => {
-    setAuthStartError("");
     setAuthModalMode(mode);
     setAuthOpen(true);
     if (mode === "register") {
@@ -607,7 +585,7 @@ export default function App() {
             </p>
           </footer>
         </main>
-        {authOpen && <AuthModal initialMode={authModalMode} initialError={authStartError} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
+        {authOpen && <AuthModal initialMode={authModalMode} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
       </div>
     );
   }
@@ -615,7 +593,7 @@ export default function App() {
   if (view === "student" && loggedInAs === "student" && authUser) {
     return (
       <>
-        <StudentDashboard purchasedPapers={purchasedPapers} cartPapers={cartPapers} onRemoveFromCart={removeFromCart} onCheckoutCart={checkoutCart} onLogout={handleLogout} onFeed={() => setView("feed")} onExamCatalog={() => setView("exams-catalog")} user={authUser} onViewProfile={() => { setStudentProfileId(authUser.id); setView('student-profile') }} />
+        <StudentDashboard purchasedPapers={purchasedPapers} cartPapers={cartPapers} onRemoveFromCart={removeFromCart} onCheckoutCart={checkoutCart} onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} onViewProfile={() => { setStudentProfileId(authUser.id); setView('student-profile') }} />
         {(paymentPaper || paymentPapers) && <PaymentModal userId={authUser?.id || ""} paper={paymentPaper || undefined} papers={paymentPapers || undefined} onClose={() => { setPaymentPaper(null); setPaymentPapers(null); }} onSuccess={handlePurchaseSuccess} />}
       </>
     );
@@ -626,19 +604,7 @@ export default function App() {
   }
 
   if (view === "teacher" && loggedInAs === "teacher" && authUser) {
-      return  <TeacherDashboard
-        onLogout={handleLogout}
-        onFeed={() => setView("feed")}
-        onTeacherExams={() => setView("teacher-exams")}
-        classes={classes}
-        subjects={subjects}
-        user={authUser}
-        purchasedPapers={purchasedPapers}
-        purchaseHistory={purchaseHistory}
-        cartPapers={cartPapers}
-        onRemoveFromCart={removeFromCart}
-        onCheckoutCart={checkoutCart}
-      />;
+    return <TeacherDashboard onLogout={handleLogout} onFeed={() => setView("feed")} onTeacherExams={() => setView("teacher-exams")} classes={classes} subjects={subjects} user={authUser} purchasedPapers={purchasedPapers} purchaseHistory={purchaseHistory} cartPapers={cartPapers} onRemoveFromCart={removeFromCart} onCheckoutCart={checkoutCart} />;
   }
 
   if (view === "school" && loggedInAs === "school" && authUser) {
@@ -669,39 +635,32 @@ export default function App() {
 
   if (view === "exams-catalog" && loggedInAs === "student" && authUser) {
     return (
-      <StudentExamsPage
+      <ExamCatalogPage
         onLogout={handleLogout}
         onFeed={() => setView("feed")}
         user={authUser}
-        initialTab="announced"
-        onExamCatalog={() => setView("exams-catalog")}
-        onSelectExam={(exam) => {
+        onSelect={(exam) => {
           setSelectedExamId(exam.id_examen);
           setView("exam-detail");
         }}
-        onOpenSession={(exam) => { setSelectedExamId(exam.id_examen); setView("exam-session"); }}
       />
     );
   }
 
   if (view === "exam-detail" && selectedExamId && authUser) {
-    return <ExamDetailPage onLogout={handleLogout} onFeed={() => setView("exams-catalog")} user={authUser} examId={selectedExamId} />;
-  }
-
-  if (view === "exam-session" && selectedExamId && authUser) {
-    return <StudentExamSessionPage onLogout={handleLogout} onBack={() => setView("student-exams")} user={authUser} examId={selectedExamId} />;
+    return <ExamDetailPage onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} examId={selectedExamId} />;
   }
 
   if (view === "student-exams" && loggedInAs === "student" && authUser) {
-    return <StudentExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} onExamCatalog={() => setView("exams-catalog")} initialTab="registered" user={authUser} onSelectExam={(exam) => { setSelectedExamId(exam.id_examen); setView("exam-detail"); }} onOpenSession={(exam) => { setSelectedExamId(exam.id_examen); setView("exam-session"); }} />;
+    return <StudentExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} />;
   }
 
   if (view === "teacher-exams" && loggedInAs === "teacher" && authUser) {
-    return <TeacherExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} onTeacherSubjects={() => setView("teacher")} onTeacherExams={() => setView("teacher-exams")} user={authUser} classes={catalog.classes} subjects={catalog.subjects} />;
+    return <TeacherExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} onTeacherSubjects={() => setView("teacher")} onTeacherExams={() => setView("teacher-exams")} user={authUser} classes={classes} subjects={subjects} />;
   }
 
   if (view === "create-exam" && loggedInAs === "teacher" && authUser) {
-    return <TeacherExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} onTeacherSubjects={() => setView("teacher")} onTeacherExams={() => setView("teacher-exams")} user={authUser} classes={catalog.classes} subjects={catalog.subjects} />;
+    return <TeacherExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} onTeacherSubjects={() => setView("teacher")} onTeacherExams={() => setView("teacher-exams")} user={authUser} classes={classes} subjects={subjects} />;
   }
 
   return (
@@ -719,11 +678,18 @@ export default function App() {
 
       <Toaster />
 
-      <HeroPanel stats={stats} onExamOnline={() => {
-        if (loggedInAs === "student") setView("exams-catalog");
-        else if (loggedInAs === "teacher") setView("teacher-exams");
-        else handleOpenAuth("login");
-      }} />
+      <HeroPanel
+        stats={stats}
+        onExamOnline={() => {
+          if (loggedInAs === "teacher") {
+           setView("teacher-exams");
+          } else if (loggedInAs === "student") {
+            setView("student-exams");
+          } else {
+            handleOpenAuth("login");
+          }
+        }}
+      />
 
       <div className="max-w-[1400px] mx-auto px-4 py-8">
         <div className="flex flex-col gap-4">
@@ -864,7 +830,7 @@ export default function App() {
         </div>
       </div>
 
-        {authOpen && <AuthModal initialMode={authModalMode} initialError={authStartError} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
+      {authOpen && <AuthModal initialMode={authModalMode} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
       {cartOpen && authUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
