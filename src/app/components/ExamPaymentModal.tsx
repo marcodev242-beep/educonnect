@@ -90,6 +90,9 @@ export function ExamPaymentModal({
     } catch (err) {
       setStep("error");
       setError(err instanceof Error ? err.message : "Erreur lors du paiement.");
+    } finally {
+      // Réactive le formulaire après un refus ou un délai dépassé afin que
+      // l'élève puisse relancer le paiement sans fermer la fenêtre.
       setIsProcessing(false);
     }
   };
@@ -197,7 +200,11 @@ export function ExamPaymentModal({
               </div>
               <p className="text-sm text-slate-600">{error || message}</p>
               <button
-                onClick={() => setStep("phone")}
+                onClick={() => {
+                  setError("");
+                  setMessage("Confirmez le paiement sur votre téléphone");
+                  setStep("phone");
+                }}
                 className="w-full py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50"
               >
                 Réessayer
