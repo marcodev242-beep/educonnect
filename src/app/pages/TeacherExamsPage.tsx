@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronLeft, FileText, Clock, CheckCircle2, Star, GraduationCap, User, Plus, Edit3, Download } from "lucide-react";
+import { ChevronLeft, FileText, Clock, CheckCircle2, Star, GraduationCap, User, Plus, Edit3, Download, ClipboardList } from "lucide-react";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { apiUrl } from "../../lib/api";
 import { toast } from "sonner";
@@ -43,7 +43,7 @@ export function TeacherExamsPage({ onLogout, onFeed, onTeacherSubjects, onTeache
   const [savingGrade, setSavingGrade] = useState<string | null>(null);
   const filteredSubjects = subjects;
 
-  const fetchExams = async () => {
+  const fetchExams = async (silent = false) => {
     try {
       const res = await fetch(apiUrl("/api/teacher/exams"), { credentials: "include" });
       if (!res.ok) throw new Error("Impossible de charger les examens");
@@ -51,14 +51,16 @@ export function TeacherExamsPage({ onLogout, onFeed, onTeacherSubjects, onTeache
       setExams(data.exams || []);
     } catch (error) {
       console.error("Erreur examens enseignant:", error);
-      toast.error("Impossible de charger vos examens");
+      if (!silent) toast.error("Impossible de charger vos examens");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchExams();
+    void fetchExams();
+    const refresh = window.setInterval(() => void fetchExams(true), 15_000);
+    return () => window.clearInterval(refresh);
   }, []);
 
   const handleCreateExam = async () => {
@@ -184,40 +186,48 @@ export function TeacherExamsPage({ onLogout, onFeed, onTeacherSubjects, onTeache
     TERMINE: "Terminé",
     ANNULE: "Annulé",
   };
+  const announcedTotal = exams.filter(exam => (exam.statut_effectif || exam.statut) === "ANNOUNCE").length;
+  const liveTotal = exams.filter(exam => (exam.statut_effectif || exam.statut) === "EN_COURS").length;
+  const toGradeTotal = exams.reduce((total, exam) => total + Number(exam.copies_a_corriger || 0), 0);
 
   return (
     <div className="app-shell min-h-screen">
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-12">
         <DashboardHeader role="teacher" name={user.name} onLogout={onLogout} onFeed={onFeed} onTeacherSubjects={onTeacherSubjects} onTeacherExams={onTeacherExams} />
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900">Mes examens</h1>
-            <p className="text-slate-600">Créez, publiez et corrigez vos examens test en ligne</p>
-          </div>
-          <div className="flex gap-2">
+        <section className="relative mb-7 overflow-hidden rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 text-white shadow-xl shadow-slate-900/15 sm:p-8">
+          <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full border-[36px] border-emerald-400/10" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl"><span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.16em] text-emerald-100"><GraduationCap size={14}/> Espace enseignant</span><h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Pilotez vos examens en ligne.</h1><p className="mt-2 text-sm leading-6 text-slate-300">Publiez les sujets, suivez les inscriptions et corrigez les copies depuis votre espace.</p></div>
+            <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("list")}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition ${
                 activeTab === "list"
-                  ? "bg-slate-900 text-white"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  ? "bg-white text-slate-950 shadow-lg"
+                  : "border border-white/20 bg-white/10 text-white hover:bg-white/20"
               }`}
             >
-              Liste
+              <ClipboardList size={15}/> Examens
             </button>
             <button
               onClick={() => setActiveTab("create")}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-black transition ${
                 activeTab === "create"
-                  ? "bg-green-600 text-white"
-                  : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  ? "bg-emerald-500 text-white shadow-lg"
+                  : "border border-white/20 bg-white/10 text-white hover:bg-white/20"
               }`}
             >
               <Plus size={14} /> Créer
             </button>
           </div>
-        </div>
+          </div>
+          <div className="relative mt-7 grid max-w-2xl grid-cols-3 gap-2 sm:gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Annoncés</p><p className="mt-1 text-2xl font-black">{announcedTotal}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">En cours</p><p className="mt-1 text-2xl font-black">{liveTotal}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Copies à corriger</p><p className="mt-1 text-2xl font-black">{toGradeTotal}</p></div>
+          </div>
+        </section>
 
         {activeTab === "list" ? (
           <div className="space-y-6">
@@ -254,6 +264,7 @@ export function TeacherExamsPage({ onLogout, onFeed, onTeacherSubjects, onTeache
                           {exam.nom_matiere} · Niveau {exam.nom_classe} · {exam.duree_minutes} min
                         </p>
                         <p className="mt-1 text-xs text-slate-400">{Array.isArray(exam.fichiers_sujets) && exam.fichiers_sujets.length ? `${exam.fichiers_sujets.length} fichier(s) dans le sujet` : exam.url_sujet && exam.url_sujet !== "#" ? "1 fichier dans le sujet" : "Sujet non ajouté"}</p>
+                        {(exam.statut_effectif || exam.statut) === "ANNOUNCE" && <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900"><Clock size={12}/> Inscriptions ouvertes jusqu’au {new Date(exam.date_debut).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
                       </div>
                     </div>
 
@@ -357,6 +368,7 @@ export function TeacherExamsPage({ onLogout, onFeed, onTeacherSubjects, onTeache
                 </div>
                 <div><label className="text-xs font-semibold text-slate-500 block mb-2">Heure de début</label><input type="time" step="60" required value={createExam.heureDebut} onChange={e => setCreateExam({ ...createExam, heureDebut: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-green-500" /></div>
               </div>
+              <p className="-mt-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-900">Les inscriptions et paiements ferment automatiquement à l’heure de début. Si vous modifiez la date, cette limite est mise à jour avec elle.</p>
               <div><label className="text-xs font-semibold text-slate-500 block mb-2">Pages du sujet (PDF ou images, 10 Mo maximum par fichier, jusqu’à 10 fichiers)</label><input type="file" required multiple accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" onChange={e => { const files = Array.from(e.target.files || []); if (files.length > 10) { toast.error("Vous pouvez joindre jusqu’à 10 fichiers."); e.target.value = ""; setSubjectFiles([]); return; } setSubjectFiles(files); }} className="block w-full rounded-xl border border-slate-200 p-3 text-sm" />{subjectFiles.length > 0 && <ul className="mt-2 list-inside list-disc text-xs text-slate-600">{subjectFiles.map((file, index) => <li key={`${file.name}-${index}`}>{file.name}</li>)}</ul>}</div>
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-2">Places maximum (optionnel)</label>

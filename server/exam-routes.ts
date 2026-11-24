@@ -450,6 +450,11 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
     try {
       const exam = await findExam(normalizeText(req.params.examId))
       if (!exam) return res.status(404).json({ error: 'Examen introuvable' })
+      // La période d'inscription prend fin au début de l'épreuve. Le serveur
+      // revalide la date ici, même si la page d'inscription est restée ouverte.
+      if (exam.statut !== 'ANNOUNCE' || isPast(exam.date_debut)) {
+        return res.status(409).json({ error: 'La période d’inscription est terminée. Le paiement de cet examen est fermé.' })
+      }
       const montant = Number(exam.prix_inscription)
       if (!Number.isFinite(montant) || montant <= 0) {
         return res.status(400).json({ error: 'Cet examen ne requiert pas de paiement.' })
@@ -459,8 +464,11 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
         [exam.id_examen, auth.id],
       )
       if (!enrollment.rowCount) return res.status(403).json({ error: "Inscrivez-vous avant de payer." })
-      if (['PAYE', 'GRATUIT_ABONNEMENT'].includes(enrollment.rows[0].statut)) {
-        return res.status(409).json({ error: 'Inscription déjà réglée.' })
+      if (enrollment.rows[0].statut !== 'EN_ATTENTE_PAIEMENT') {
+        if (['PAYE', 'GRATUIT_ABONNEMENT'].includes(enrollment.rows[0].statut)) {
+          return res.status(409).json({ error: 'Inscription déjà réglée.' })
+        }
+        return res.status(409).json({ error: 'Cette inscription ne peut plus être payée.' })
       }
 
       await pool.query(

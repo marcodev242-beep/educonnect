@@ -22,8 +22,9 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
-  const fetchExam = async () => {
+  const fetchExam = async (silent = false) => {
     try {
       const res = await fetch(apiUrl(`/api/exams/${encodeURIComponent(examId)}`), { credentials: "include" });
       if (!res.ok) throw new Error("Examen introuvable");
@@ -35,15 +36,22 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
       else setEnrollmentStatus("idle");
     } catch (error) {
       console.error("Erreur chargement examen:", error);
-      toast.error("Impossible de charger l'examen");
+      if (!silent) toast.error("Impossible de charger l'examen");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchExam();
+    void fetchExam();
+    const refresh = window.setInterval(() => void fetchExam(true), 15_000);
+    return () => window.clearInterval(refresh);
   }, [examId]);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setCurrentTime(Date.now()), 1_000);
+    return () => window.clearInterval(clock);
+  }, []);
 
   const handleEnroll = async () => {
     if (!exam) return;
@@ -58,6 +66,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
       if (!res.ok) throw new Error(data.error || "Inscription impossible");
 
       if (data.requiresPayment && !data.viaSubscription) {
+        setEnrollmentStatus("payment_required");
         setPaymentAmount(data.amount);
         setPaymentModalOpen(true);
       } else if (data.viaSubscription) {
@@ -102,6 +111,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
 
   const price = Number(exam.prix_inscription || 0);
   const isFree = price <= 0;
+  const registrationOpen = exam.statut === "ANNOUNCE" && currentTime < new Date(exam.date_debut).getTime();
   const formattedStart = new Date(exam.date_debut).toLocaleDateString("fr-FR", {
     weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
@@ -204,9 +214,12 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
                       <p className="text-xs text-emerald-600">Paiement validé. Vous pouvez déposer votre copie.</p>
                     </div>
                   </div>
-                ) : exam.statut === "EN_COURS" || exam.statut === "TERMINE" ? (
+                ) : enrollmentStatus === "payment_required" ? (
+                  registrationOpen ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm font-black text-amber-950">Inscription en attente de paiement</p><p className="mt-1 text-xs leading-5 text-amber-900">Le règlement doit être effectué avant le début de l’épreuve, le {formattedStart}.</p><button onClick={() => { setPaymentAmount(price); setPaymentModalOpen(true); }} className="mt-4 w-full rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 py-3 text-xs font-black text-white shadow-sm transition hover:from-amber-700 hover:to-orange-600">Payer {price.toLocaleString("fr-FR")} FCFA</button></div>
+                    : <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">La période d’inscription est terminée. Le paiement est fermé depuis le début de l’épreuve.</div>
+                ) : !registrationOpen ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {exam.statut === "EN_COURS" ? "La session a commencé. Les inscriptions sont fermées ; ouvrez « Mes examens » pour déposer votre copie si vous êtes inscrit." : "Cette session est terminée."}
+                    {currentTime >= new Date(exam.date_fin).getTime() ? "Cette session est terminée." : "La période d’inscription est fermée. Le paiement n’est plus disponible après l’heure de début."}
                   </div>
                 ) : (
                   <>
@@ -255,7 +268,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
                   </div>
                 </div>
                 <div className="mb-4">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 block">Évaluation</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 block">Avis moyen sur l’enseignant (sur 5)</label>
                   <div className="flex items-center gap-2">
                     <StarRating value={exam.note_enseignant ?? 0} readOnly size={18} />
                     <span className="text-xs font-bold text-slate-700">{exam.note_enseignant?.toFixed(1) || "0"}/5</span>
@@ -289,6 +302,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
           }}
           examId={exam.id_examen}
           amount={paymentAmount}
+          deadlineAt={exam.date_debut}
         />
       )}
 

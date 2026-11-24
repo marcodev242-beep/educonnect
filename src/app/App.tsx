@@ -19,6 +19,7 @@ import { StudentProfilePage } from "./pages/StudentProfilePage";
 import { ExamCatalogPage } from "./pages/ExamCatalogPage";
 import { ExamDetailPage } from "./pages/ExamDetailPage";
 import { StudentExamsPage } from "./pages/StudentExamsPage";
+import { StudentExamSessionPage } from "./pages/StudentExamSessionPage";
 import { TeacherExamsPage } from "./pages/TeacherExamsPage";
 import { AuthMode, AuthUser, CatalogData, Paper, UserRole, ViewAll as View, CatalogClass, CatalogSubject, CatalogStats, PurchaseHistoryItem } from "./types";
 
@@ -51,6 +52,7 @@ export default function App() {
   const [studentProfileId, setStudentProfileId] = useState<string | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [shouldRedirectTeacherAfterLogin, setShouldRedirectTeacherAfterLogin] = useState(false);
+  const [shouldRedirectStudentToExams, setShouldRedirectStudentToExams] = useState(false);
   const [catalog, setCatalog] = useState<CatalogData>({
     classes: [],
     subjects: [],
@@ -61,7 +63,7 @@ export default function App() {
   const [catalogError, setCatalogError] = useState("");
   const AUTH_STORAGE_KEY = "educonnect-auth-user";
   const CART_STORAGE_KEY_PREFIX = "educonnect-cart-";
-  const protectedViews: View[] = ["student", "teacher", "school", "admin", "student-profile", "exams-catalog", "exam-detail", "student-exams", "teacher-exams", "create-exam"];
+  const protectedViews: View[] = ["student", "teacher", "school", "admin", "student-profile", "exams-catalog", "exam-detail", "exam-session", "student-exams", "teacher-exams", "create-exam"];
   const [schoolSubscriptionActive, setSchoolSubscriptionActive] = useState(false);
   const isHandlingPopState = useRef(false);
   const hasPushedInitialView = useRef(false);
@@ -270,6 +272,12 @@ export default function App() {
       return;
     }
 
+    if (shouldRedirectStudentToExams) {
+      setShouldRedirectStudentToExams(false);
+      setView(user.role === "teacher" ? "teacher-exams" : user.role === "student" ? "student-exams" : "feed");
+      return;
+    }
+
     const map: Record<UserRole, View> = { student: "student", teacher: "teacher", school: "school", admin: "admin" };
     setView(map[user.role]);
   };
@@ -280,6 +288,7 @@ export default function App() {
     setAuthUser(null);
     setLoggedInAs(null);
     setShouldRedirectTeacherAfterLogin(false);
+    setShouldRedirectStudentToExams(false);
     setView("home");
     setPurchasedIds(new Set());
     setSavedIds(new Set());
@@ -585,7 +594,7 @@ export default function App() {
             </p>
           </footer>
         </main>
-        {authOpen && <AuthModal initialMode={authModalMode} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
+        {authOpen && <AuthModal initialMode={authModalMode} onClose={() => { setAuthOpen(false); setShouldRedirectStudentToExams(false); }} onLogin={handleLogin} schools={schools} />}
       </div>
     );
   }
@@ -593,7 +602,7 @@ export default function App() {
   if (view === "student" && loggedInAs === "student" && authUser) {
     return (
       <>
-        <StudentDashboard purchasedPapers={purchasedPapers} cartPapers={cartPapers} onRemoveFromCart={removeFromCart} onCheckoutCart={checkoutCart} onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} onViewProfile={() => { setStudentProfileId(authUser.id); setView('student-profile') }} />
+        <StudentDashboard purchasedPapers={purchasedPapers} cartPapers={cartPapers} onRemoveFromCart={removeFromCart} onCheckoutCart={checkoutCart} onLogout={handleLogout} onFeed={() => setView("feed")} onExamCatalog={() => setView("student-exams")} user={authUser} onViewProfile={() => { setStudentProfileId(authUser.id); setView('student-profile') }} />
         {(paymentPaper || paymentPapers) && <PaymentModal userId={authUser?.id || ""} paper={paymentPaper || undefined} papers={paymentPapers || undefined} onClose={() => { setPaymentPaper(null); setPaymentPapers(null); }} onSuccess={handlePurchaseSuccess} />}
       </>
     );
@@ -638,6 +647,7 @@ export default function App() {
       <ExamCatalogPage
         onLogout={handleLogout}
         onFeed={() => setView("feed")}
+        onExamCatalog={() => setView("student-exams")}
         user={authUser}
         onSelect={(exam) => {
           setSelectedExamId(exam.id_examen);
@@ -648,11 +658,22 @@ export default function App() {
   }
 
   if (view === "exam-detail" && selectedExamId && authUser) {
-    return <ExamDetailPage onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} examId={selectedExamId} />;
+    return <ExamDetailPage onLogout={handleLogout} onFeed={() => setView("student-exams")} user={authUser} examId={selectedExamId} />;
+  }
+
+  if (view === "exam-session" && selectedExamId && authUser) {
+    return <StudentExamSessionPage onLogout={handleLogout} onBack={() => setView("student-exams")} user={authUser} examId={selectedExamId} />;
   }
 
   if (view === "student-exams" && loggedInAs === "student" && authUser) {
-    return <StudentExamsPage onLogout={handleLogout} onFeed={() => setView("feed")} user={authUser} />;
+    return <StudentExamsPage
+      onLogout={handleLogout}
+      onFeed={() => setView("feed")}
+      onExamCatalog={() => setView("student-exams")}
+      onSelectExam={exam => { setSelectedExamId(exam.id_examen); setView("exam-detail"); }}
+      onOpenSession={exam => { setSelectedExamId(exam.id_examen); setView("exam-session"); }}
+      user={authUser}
+    />;
   }
 
   if (view === "teacher-exams" && loggedInAs === "teacher" && authUser) {
@@ -672,6 +693,10 @@ export default function App() {
         authUser={authUser}
         setView={setView}
         onOpenAuth={handleOpenAuth}
+        onOpenExams={() => {
+          setShouldRedirectStudentToExams(true);
+          handleOpenAuth("login");
+        }}
         cartCount={cartPapers.length}
         onOpenCart={() => setCartOpen(true)}
       />
@@ -686,6 +711,7 @@ export default function App() {
           } else if (loggedInAs === "student") {
             setView("student-exams");
           } else {
+            setShouldRedirectStudentToExams(true);
             handleOpenAuth("login");
           }
         }}
@@ -830,7 +856,7 @@ export default function App() {
         </div>
       </div>
 
-      {authOpen && <AuthModal initialMode={authModalMode} onClose={() => setAuthOpen(false)} onLogin={handleLogin} schools={schools} />}
+      {authOpen && <AuthModal initialMode={authModalMode} onClose={() => { setAuthOpen(false); setShouldRedirectStudentToExams(false); }} onLogin={handleLogin} schools={schools} />}
       {cartOpen && authUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">

@@ -2,6 +2,7 @@
 import React from "react";
 import { Bell, Home, LogOut, BookOpen } from "lucide-react";
 import { UserRole } from "../types";
+import { InstallAppButton } from "./InstallAppButton";
 
 const badgeColors: Record<UserRole, string> = {
   student: "bg-emerald-100 text-emerald-900",
@@ -63,6 +64,8 @@ export function DashboardHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-3">
+
+          <InstallAppButton />
 
           <button
             type="button"

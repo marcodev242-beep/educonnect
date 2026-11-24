@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronLeft, CalendarDays, Radio, ClipboardList } from "lucide-react";
+import { ChevronLeft, CalendarDays, Radio, ClipboardList, GraduationCap, Clock3, WalletCards } from "lucide-react";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { ExamPaymentModal } from "../components/ExamPaymentModal";
 import { ExamCountdown } from "../components/ExamCountdown";
@@ -78,30 +78,36 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-12">
         <DashboardHeader role="student" name={user.name} onLogout={onLogout} onFeed={onFeed} onExamCatalog={onExamCatalog} />
 
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900">Examens en ligne</h1>
-            <p className="text-slate-600">Retrouvez les annonces, les sessions ouvertes et vos inscriptions au même endroit.</p>
+        <section className="relative mb-7 overflow-hidden rounded-[28px] bg-gradient-to-br from-emerald-950 via-emerald-800 to-teal-700 p-6 text-white shadow-xl shadow-emerald-950/15 sm:p-8">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-64 w-64 rounded-full border-[34px] border-white/5" />
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-50"><GraduationCap size={14} /> Espace examens élève</span>
+              <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Vos examens, au même endroit.</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/80">Consultez les annonces, rejoignez une session ouverte et suivez vos inscriptions.</p>
+            </div>
+            <button onClick={onFeed} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-xs font-black text-white transition hover:bg-white/20">
+              <ChevronLeft size={15} /> Retour à l’accueil
+            </button>
           </div>
-          <button
-            onClick={onFeed}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900"
-          >
-            <ChevronLeft size={14} /> Retour accueil
-          </button>
-        </div>
+          <div className="relative mt-7 grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">Annoncés</p><p className="mt-1 text-2xl font-black">{announcedExams.length}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">En cours</p><p className="mt-1 text-2xl font-black">{liveExams.length}</p></div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3 sm:p-4"><p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">Mes inscriptions</p><p className="mt-1 text-2xl font-black">{exams.length}</p></div>
+          </div>
+        </section>
 
-        <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-          <button onClick={() => setActiveTab("announced")} className={`flex items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black sm:text-sm ${activeTab === "announced" ? "bg-emerald-700 text-white shadow" : "text-slate-600 hover:bg-slate-50"}`}><CalendarDays size={16} /><span>Annoncés</span><span className="rounded-full bg-white/20 px-2">{announcedExams.length}</span></button>
-          <button onClick={() => setActiveTab("live")} className={`flex items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black sm:text-sm ${activeTab === "live" ? "bg-emerald-700 text-white shadow" : "text-slate-600 hover:bg-slate-50"}`}><Radio size={16} /><span>En cours</span><span className="rounded-full bg-white/20 px-2">{liveExams.length}</span></button>
-          <button onClick={() => setActiveTab("registered")} className={`flex items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black sm:text-sm ${activeTab === "registered" ? "bg-emerald-700 text-white shadow" : "text-slate-600 hover:bg-slate-50"}`}><ClipboardList size={16} /><span>Mes examens</span><span className="rounded-full bg-white/20 px-2">{exams.length}</span></button>
+        <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl border border-slate-200/80 bg-white/80 p-2 shadow-sm backdrop-blur sm:gap-3">
+          <button onClick={() => setActiveTab("announced")} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black transition sm:text-sm ${activeTab === "announced" ? "bg-emerald-800 text-white shadow-lg shadow-emerald-900/15" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-900"}`}><CalendarDays size={16} /><span>Annoncés</span><span className={`rounded-full px-2 py-0.5 text-[10px] ${activeTab === "announced" ? "bg-white/20" : "bg-slate-100"}`}>{announcedExams.length}</span></button>
+          <button onClick={() => setActiveTab("live")} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black transition sm:text-sm ${activeTab === "live" ? "bg-emerald-800 text-white shadow-lg shadow-emerald-900/15" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-900"}`}><Radio size={16} /><span>En cours</span><span className={`rounded-full px-2 py-0.5 text-[10px] ${activeTab === "live" ? "bg-white/20" : "bg-slate-100"}`}>{liveExams.length}</span></button>
+          <button onClick={() => setActiveTab("registered")} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 py-3 text-xs font-black transition sm:text-sm ${activeTab === "registered" ? "bg-emerald-800 text-white shadow-lg shadow-emerald-900/15" : "text-slate-600 hover:bg-emerald-50 hover:text-emerald-900"}`}><ClipboardList size={16} /><span>Mes examens</span><span className={`rounded-full px-2 py-0.5 text-[10px] ${activeTab === "registered" ? "bg-white/20" : "bg-slate-100"}`}>{exams.length}</span></button>
         </div>
 
         {activeTab === "announced" || activeTab === "live" ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {(activeTab === "announced" ? announcedExams : liveExams).length === 0 ? <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white/80 p-12 text-center"><p className="font-bold text-slate-700">{activeTab === "announced" ? "Aucun examen annoncé pour le moment" : "Aucune session en cours"}</p><p className="mt-2 text-sm text-slate-500">Cette liste se met à jour automatiquement.</p></div> : (activeTab === "announced" ? announcedExams : liveExams).map(exam => {
               const registered = exams.some(item => item.id_examen === exam.id_examen);
-              return <article key={exam.id_examen} className="rounded-2xl border border-white bg-white/90 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)]"><div className="mb-3 flex items-center justify-between"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${activeTab === "live" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{activeTab === "live" ? "Session ouverte" : "Examen annoncé"}</span>{registered && <span className="text-[10px] font-bold text-emerald-700">Inscrit</span>}</div><h2 className="text-lg font-black text-slate-900">{exam.titre}</h2><p className="mt-1 text-sm text-slate-500">{exam.nom_matiere || "Matière"} · Niveau {exam.nom_classe || "—"}</p><div className="mt-4 space-y-1 text-xs text-slate-600"><p>Début : {new Date(exam.date_debut).toLocaleString("fr-FR")}</p><p>Durée : {exam.duree_minutes} minutes · {Number(exam.prix_inscription || 0).toLocaleString("fr-FR")} FCFA</p></div>{activeTab === "live" && <div className="mt-4"><ExamCountdown endsAt={exam.date_fin}/></div>}<button onClick={() => activeTab === "live" && registered ? onOpenSession?.(exam) : onSelectExam?.(exam)} className="mt-5 w-full rounded-xl bg-slate-950 px-4 py-3 text-xs font-black text-white hover:bg-emerald-700">{activeTab === "live" && registered ? "Ouvrir ma session" : activeTab === "live" ? "Voir les informations" : registered ? "Voir mon inscription" : "Consulter et s’inscrire"}</button></article>;
+              return <article key={exam.id_examen} className="group relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div className={`absolute inset-x-0 top-0 h-1 ${activeTab === "live" ? "bg-gradient-to-r from-emerald-500 to-teal-400" : "bg-gradient-to-r from-amber-400 to-orange-300"}`} /><div className="flex items-center justify-between gap-2 pt-1"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${activeTab === "live" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{activeTab === "live" ? "Session ouverte" : "Examen annoncé"}</span>{registered && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">Inscrit</span>}</div><h2 className="mt-4 text-xl font-black leading-tight text-slate-900">{exam.titre}</h2><p className="mt-2 text-sm font-semibold text-slate-600">{exam.nom_matiere || "Matière"} <span className="text-slate-300">·</span> Niveau {exam.nom_classe || "—"}</p><div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Début</p><p className="mt-1 text-xs font-bold text-slate-800">{new Date(exam.date_debut).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Durée · Prix</p><p className="mt-1 text-xs font-bold text-slate-800">{exam.duree_minutes} min · {Number(exam.prix_inscription || 0).toLocaleString("fr-FR")} FCFA</p></div></div>{activeTab === "live" && <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-black text-emerald-900"><Clock3 size={14}/> Temps restant</div><ExamCountdown endsAt={exam.date_fin}/></div>}<button onClick={() => { if (activeTab === "live" && registered) onOpenSession?.(exam); else if (registered) setActiveTab("registered"); else onSelectExam?.(exam); }} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3.5 text-xs font-black text-white transition hover:bg-emerald-800">{activeTab === "live" && registered ? "Ouvrir ma session" : activeTab === "live" ? "Voir les informations" : registered ? "Voir mon inscription" : "Consulter et s’inscrire"}<span aria-hidden="true">→</span></button></article>;
             })}
           </div>
         ) : exams.length === 0 ? (
@@ -116,8 +122,9 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
               const effectiveStatus = exam.statut_effectif || exam.statut;
               const prix = Number(exam.prix_inscription || 0);
               const isPaid = ["PAYE", "GRATUIT_ABONNEMENT"].includes(statut);
-              const hasNote = exam.valeur != null;
+              const hasNote = exam.note != null;
               const hasCopy = Number(exam.copies_deposees || 0) > 0;
+              const registrationClosed = new Date(exam.date_debut).getTime() <= Date.now() || effectiveStatus !== "ANNOUNCE";
 
               return (
                 <div
@@ -155,7 +162,7 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
                       </span>
                       {hasNote && (
                         <span className="text-xs font-bold text-slate-600">
-                          Note : <span className="text-green-600">{exam.valeur}/20</span>
+                          Note : <span className="text-green-600">{exam.note}/20</span>
                         </span>
                       )}
                     </div>
@@ -171,7 +178,7 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
                       <p className="text-sm font-black">{exam.copies_deposees || 0}</p>
                     </div>
                     <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                      <p className="text-xs text-slate-400 uppercase font-bold">Évaluation enseignant</p>
+                      <p className="text-xs text-slate-400 uppercase font-bold">Avis sur l’enseignant</p>
                       <p className="text-sm font-black">{exam.note_enseignant ?? "—"}/5</p>
                     </div>
                   </div>
@@ -180,16 +187,11 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
 
                   {!isPaid && prix > 0 ? (
                     <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mb-4">
-                      <p className="text-sm font-bold text-amber-800 mb-2">Paiement requis</p>
-                      <p className="text-xs text-amber-700 mb-3">
-                        Vous devez payer {prix.toLocaleString("fr-FR")} FCFA pour confirmer votre inscription.
-                      </p>
-                      <button
-                        onClick={() => handlePay(exam.id_examen, prix)}
-                        className="w-full py-2.5 rounded-lg bg-amber-600 text-xs font-black text-white hover:bg-amber-700 transition-colors"
-                      >
-                        Payer l'inscription
-                      </button>
+                      {registrationClosed ? (
+                        <><p className="text-sm font-bold text-slate-800">La période d’inscription est terminée</p><p className="mt-1 text-xs text-slate-600">Le paiement est fermé depuis le début de l’épreuve ({new Date(exam.date_debut).toLocaleString("fr-FR")}).</p></>
+                      ) : (
+                        <><p className="text-sm font-bold text-amber-900">Paiement requis</p><p className="mt-1 text-xs text-amber-800">Réglez {prix.toLocaleString("fr-FR")} FCFA avant le début de l’épreuve pour confirmer votre inscription.</p><button onClick={() => handlePay(exam.id_examen, prix)} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-500 px-4 py-3 text-xs font-black text-white shadow-md shadow-amber-900/10 transition hover:-translate-y-0.5 hover:from-amber-700 hover:to-orange-600"><WalletCards size={16}/> Payer {prix.toLocaleString("fr-FR")} FCFA</button></>
+                      )}
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-3">
@@ -202,7 +204,7 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
                         <div className="flex-1 md:flex-auto p-3 rounded-xl bg-emerald-50 border border-emerald-100">
                           <p className="text-xs font-bold text-emerald-700 uppercase mb-1">Résultat</p>
                           <p className="text-lg font-black text-emerald-800">
-                            {exam.valeur}/20
+                            {exam.note}/20
                             {exam.appreciation ? ` - ${exam.appreciation}` : ""}
                           </p>
                           {exam.url_corrige && (
@@ -247,6 +249,7 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
           }}
           examId={paymentExamId}
           amount={paymentAmount}
+          deadlineAt={exams.find(exam => exam.id_examen === paymentExamId)?.date_debut}
         />
       )}
     </div>

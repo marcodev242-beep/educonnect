@@ -9,11 +9,13 @@ import { toast } from "sonner";
 export function ExamCatalogPage({
   onLogout,
   onFeed,
+  onExamCatalog,
   user,
   onSelect,
 }: {
   onLogout: () => void;
   onFeed: () => void;
+  onExamCatalog?: () => void;
   user: { id: string; name: string; role: string };
   onSelect?: (exam: any) => void;
 }) {
@@ -61,7 +63,7 @@ export function ExamCatalogPage({
   return (
     <div className="app-shell min-h-screen">
       <div className="max-w-6xl mx-auto px-4 pt-6 pb-12">
-        <DashboardHeader role="student" name={user.name} onLogout={onLogout} onFeed={onFeed} />
+        <DashboardHeader role="student" name={user.name} onLogout={onLogout} onFeed={onFeed} onExamCatalog={onExamCatalog} />
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-8">
           <div>
             <h1 className="text-2xl font-black text-slate-900">Catalogue des examens</h1>

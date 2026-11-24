@@ -1,6 +1,7 @@
 import React from "react";
 import { LogIn, Search, ShoppingCart, UserPlus, BookOpen } from "lucide-react";
 import { AuthMode, AuthUser, UserRole, View } from "../types";
+import { InstallAppButton } from "./InstallAppButton";
 
 const roleLabels: Record<UserRole, string> = {
   student: "Grand public",
@@ -23,6 +24,7 @@ export function AppHeader({
   authUser,
   setView,
   onOpenAuth,
+  onOpenExams,
   cartCount = 0,
   onOpenCart,
 }: {
@@ -32,12 +34,13 @@ export function AppHeader({
   authUser: AuthUser | null;
   setView: (view: View) => void;
   onOpenAuth: (mode: AuthMode) => void;
+  onOpenExams?: () => void;
   cartCount?: number;
   onOpenCart?: () => void;
 }) {
   const goToExams = () => {
     if (loggedInAs === "student") {
-      setView("exams-catalog");
+      setView("student-exams");
     } else if (loggedInAs === "teacher") {
       setView("teacher-exams");
     } else {
@@ -83,6 +86,7 @@ export function AppHeader({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <InstallAppButton />
           {authUser && dashboardView ? (
             <>
               <button
@@ -126,7 +130,7 @@ export function AppHeader({
             </>
           ) : (
             <>
-              <button type="button" onClick={() => onOpenAuth("login")} className="inline-flex h-10 items-center gap-2 rounded-full bg-emerald-700 px-3 text-xs font-black text-white shadow-md shadow-emerald-900/15 transition hover:bg-emerald-800 sm:px-4"><BookOpen size={15} /><span>Examens en ligne</span></button>
+              <button type="button" onClick={onOpenExams || (() => onOpenAuth("login"))} className="inline-flex h-10 items-center gap-2 rounded-full bg-emerald-700 px-3 text-xs font-black text-white shadow-md shadow-emerald-900/15 transition hover:bg-emerald-800 sm:px-4"><BookOpen size={15} /><span>Examens en ligne</span></button>
               <button
                 type="button"
                 onClick={() => onOpenAuth("login")}
