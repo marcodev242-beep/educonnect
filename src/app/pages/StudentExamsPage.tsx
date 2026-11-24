@@ -16,7 +16,7 @@ interface StudentExamsPageProps {
   user: { id: string; name: string; role: string };
 }
 
-export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab = "registered", onSelectExam, onOpenSession, user }: StudentExamsPageProps) {
+export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab = "announced", onSelectExam, onOpenSession, user }: StudentExamsPageProps) {
   const [exams, setExams] = useState<any[]>([]);
   const [announcedExams, setAnnouncedExams] = useState<any[]>([]);
   const [liveExams, setLiveExams] = useState<any[]>([]);
