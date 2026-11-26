@@ -930,7 +930,25 @@ export const finalizeExamPayment = async (
   }
   if (!succeeded) return 'FAILED'
 
+  const finalizedPayment = updated.rows[0]
+
   if (payment.type_paiement === 'INSCRIPTION') {
+    const teacherEarning = Math.round(Number(finalizedPayment.montant || payment.montant || 0) * 0.7)
+    if (finalizedPayment.id_enseignant) {
+      const creditedTeacher = await client.query(
+        `UPDATE profils_enseignants SET solde_gagne = COALESCE(solde_gagne, 0) + $1
+         WHERE id_utilisateur = $2`,
+        [teacherEarning, finalizedPayment.id_enseignant],
+      )
+      if (!creditedTeacher.rowCount) {
+        throw new Error(`Profil enseignant introuvable pour le paiement ${finalizedPayment.reference}`)
+      }
+      await client.query(
+        `UPDATE paiements_examens SET montant_enseignant = $1, enseignant_credite = TRUE
+         WHERE id_paiement_examen = $2`,
+        [teacherEarning, finalizedPayment.id_paiement_examen],
+      )
+    }
     await client.query(
       `UPDATE inscriptions_examens SET statut = 'PAYE'
        WHERE id_examen = $1 AND id_eleve = $2 AND statut = 'EN_ATTENTE_PAIEMENT'`,

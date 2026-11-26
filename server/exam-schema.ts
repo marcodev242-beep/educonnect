@@ -146,6 +146,8 @@ export const ensureExamSchema = async (pool: pg.Pool): Promise<void> => {
       id_eleve TEXT NOT NULL REFERENCES utilisateurs(id_utilisateur) ON DELETE CASCADE,
       id_enseignant TEXT REFERENCES utilisateurs(id_utilisateur) ON DELETE CASCADE,
       montant DECIMAL(10, 2) NOT NULL DEFAULT 0,
+      montant_enseignant DECIMAL(10, 2) NOT NULL DEFAULT 0,
+      enseignant_credite BOOLEAN NOT NULL DEFAULT FALSE,
       statut TEXT NOT NULL DEFAULT 'PENDING',
       date_creation TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       date_initiation TIMESTAMPTZ,
@@ -153,6 +155,27 @@ export const ensureExamSchema = async (pool: pg.Pool): Promise<void> => {
     );
 
     ALTER TABLE paiements_examens ADD COLUMN IF NOT EXISTS reference_groupe TEXT;
+    ALTER TABLE paiements_examens ADD COLUMN IF NOT EXISTS montant_enseignant DECIMAL(10, 2) NOT NULL DEFAULT 0;
+    ALTER TABLE paiements_examens ADD COLUMN IF NOT EXISTS enseignant_credite BOOLEAN NOT NULL DEFAULT FALSE;
+    WITH credits AS (
+      UPDATE paiements_examens p
+      SET montant_enseignant = ROUND(p.montant * 0.70), enseignant_credite = TRUE
+      WHERE p.type_paiement = 'INSCRIPTION'
+        AND p.statut = 'SUCCESS'
+        AND p.enseignant_credite = FALSE
+        AND EXISTS (
+          SELECT 1 FROM profils_enseignants pe WHERE pe.id_utilisateur = p.id_enseignant
+        )
+      RETURNING p.id_enseignant, p.montant_enseignant
+    ), totaux AS (
+      SELECT id_enseignant, SUM(montant_enseignant) AS montant
+      FROM credits
+      GROUP BY id_enseignant
+    )
+    UPDATE profils_enseignants pe
+    SET solde_gagne = COALESCE(pe.solde_gagne, 0) + totaux.montant
+    FROM totaux
+    WHERE pe.id_utilisateur = totaux.id_enseignant;
     CREATE INDEX IF NOT EXISTS idx_paiements_examens_reference_groupe
       ON paiements_examens (reference_groupe);
 

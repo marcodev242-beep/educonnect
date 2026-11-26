@@ -2712,12 +2712,25 @@ app.get('/api/teacher/dashboard', requireAuth, requireRole('teacher'), async (re
         ORDER BY d.date_televersement DESC
       `, [userId]),
       pool.query(`
-        SELECT t.date_achat, t.montant, d.titre
-        FROM transactions t
-        JOIN sujets d ON d.id_sujet = t.id_sujet
-        WHERE t.statut_paiement IN ('SUCCESS', '200')
-          AND d.id_enseignant = $1
-        ORDER BY t.date_achat DESC
+        SELECT date_achat AS date, montant, label, provenance FROM (
+          SELECT t.date_achat, t.montant, d.titre AS label, 'Achat de sujet' AS provenance
+          FROM transactions t
+          JOIN sujets d ON d.id_sujet = t.id_sujet
+          WHERE t.statut_paiement IN ('SUCCESS', '200')
+            AND d.id_enseignant = $1
+          UNION ALL
+          SELECT COALESCE(p.date_traitement, p.date_creation) AS date_achat,
+                 p.montant_enseignant AS montant,
+                 e.titre AS label,
+                 'Inscription examen' AS provenance
+          FROM paiements_examens p
+          JOIN examens e ON e.id_examen = p.id_examen
+          WHERE p.statut = 'SUCCESS'
+            AND p.type_paiement = 'INSCRIPTION'
+            AND p.enseignant_credite = TRUE
+            AND p.id_enseignant = $1
+        ) transactions_enseignant
+        ORDER BY date_achat DESC
         LIMIT 10
       `, [userId]),
       pool.query('SELECT COALESCE(solde_gagne, 0) AS balance FROM profils_enseignants WHERE id_utilisateur = $1', [userId]),
@@ -2726,8 +2739,8 @@ app.get('/api/teacher/dashboard', requireAuth, requireRole('teacher'), async (re
     res.json({
       publications: documentsResult.rows.map(row => ({ ...mapDocument(row), earnings: Number(row.earnings || 0) })),
       transactions: transactionsResult.rows.map(row => ({
-        date: formatDate(row.date_achat),
-        label: `Achat - ${row.titre}`,
+        date: formatDate(row.date),
+        label: `${row.provenance} - ${row.label}`,
         amount: `+${Number(row.montant || 0).toLocaleString('fr-FR')}`,
       })),
       balance: Number(balanceResult.rows[0]?.balance || 0),
