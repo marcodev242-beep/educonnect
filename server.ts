@@ -1946,7 +1946,19 @@ app.post('/api/payments/initiate', requireAuth, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => undefined)
     console.error('Erreur initiation YabisoPay:', error)
-    res.status(502).json({ error: 'Le paiement n’a pas pu être lancé. Réessayez.' })
+    const details = error instanceof Error ? error.message : ''
+    const providerHttpError = details.match(/^YabisoPay HTTP (\d+):/)
+    if (details.includes('Configuration ESchoolAPI manquante') || details.includes('ESCHOOL_CALLBACK_URL')) {
+      return res.status(503).json({ error: 'Le service de paiement est mal configuré. Contactez l’administrateur.', code: 'PAYMENT_CONFIG_ERROR' })
+    }
+    if (providerHttpError || details.includes('YabisoPay a refusé') || details.includes('YabisoPay n’a pas retourné de référence')) {
+      const status = providerHttpError ? ` (HTTP ${providerHttpError[1]})` : ''
+      return res.status(502).json({ error: `Le prestataire de paiement a refusé la demande${status}. Vérifiez sa configuration ou contactez l’administrateur.`, code: 'PAYMENT_PROVIDER_REJECTED' })
+    }
+    if (details.includes('YabisoPay est injoignable')) {
+      return res.status(502).json({ error: 'Le service de paiement est momentanément inaccessible. Réessayez plus tard.', code: 'PAYMENT_PROVIDER_UNREACHABLE' })
+    }
+    res.status(502).json({ error: 'Le paiement n’a pas pu être lancé. Réessayez.', code: 'PAYMENT_INITIATION_FAILED' })
   } finally {
     client.release()
   }

@@ -5,7 +5,7 @@
 
   if (import.meta.env.PROD && "serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      void navigator.serviceWorker.register("/sw.js").catch(error => {
+    void navigator.serviceWorker.register("/sw.js?v=2").catch(error => {
         console.warn("Installation PWA indisponible pour le moment :", error);
       });
     });
