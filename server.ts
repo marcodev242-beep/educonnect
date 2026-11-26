@@ -1895,7 +1895,7 @@ app.post('/api/payments/initiate', requireAuth, async (req, res) => {
 
     const groupReference = `TRX${Date.now()}${crypto.randomBytes(4).toString('hex').toUpperCase()}`
     const totalAmount = documents.rows.reduce((sum: number, document: any) => sum + Number(document.prix), 0)
-    const transactions: { id: string; amount: number; reference: string; documentReference: string }[] = []
+    const transactions: { id: string }[] = []
     await client.query('BEGIN')
     for (const document of documents.rows) {
       const reference = `TRX${Date.now()}${crypto.randomBytes(4).toString('hex').toUpperCase()}`
@@ -1915,19 +1915,11 @@ app.post('/api/payments/initiate', requireAuth, async (req, res) => {
           phone,
         ],
       )
-      transactions.push({
-        id: transaction.rows[0].id_transaction,
-        amount: Number(document.prix),
-        reference,
-        documentReference: document.reference_sujet,
-      })
+      transactions.push({ id: transaction.rows[0].id_transaction })
     }
     await client.query('COMMIT')
     try {
-      const apiReference = transactions
-        .map(transaction => `${transaction.reference}:${transaction.documentReference}`)
-        .join(',')
-      const externalReference = await requestYabisoPayment(groupReference, apiReference, totalAmount, phone, operator)
+      const externalReference = await requestYabisoPayment(groupReference, groupReference, totalAmount, phone, operator)
       if (!externalReference) throw new Error('YabisoPay n’a pas retourné de référence externe')
       await pool.query(
         `UPDATE transactions SET ref_externe = $1 WHERE id_transaction = $2`,

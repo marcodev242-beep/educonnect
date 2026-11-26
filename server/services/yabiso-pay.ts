@@ -210,6 +210,9 @@ export const buildYabisoInitiatePayload = (
   amount: number,
   phone: string,
 ): YabisoInitiatePayload => {
+  if (!/^[A-Za-z0-9]{4,64}$/.test(reference)) {
+    throw new Error('La référence YabisoPay doit contenir entre 4 et 64 caractères alphanumériques.')
+  }
   const merchant = yabisoMerchant()
   return {
     merchantID: merchant.merchantID,
