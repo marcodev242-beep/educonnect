@@ -525,8 +525,11 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
       console.error('Erreur initiation paiement examen:', error)
       const details = error instanceof Error ? error.message : ''
       const providerHttpError = details.match(/^YabisoPay HTTP (\d+):/)
-      if (details.includes('Configuration ESchoolAPI manquante') || details.includes('ESCHOOL_CALLBACK_URL')) {
-        return res.status(503).json({ error: 'Le service de paiement est mal configuré. Contactez l’administrateur.', code: 'PAYMENT_CONFIG_ERROR' })
+      if (details.includes('Configuration ESchoolAPI manquante')) {
+        return res.status(503).json({ error: 'Dans Render, ESCHOOL_MERCHANT_ID et ESCHOOL_MERCHANT_NAME doivent être renseignés et non vides.', code: 'PAYMENT_MERCHANT_CONFIG_MISSING' })
+      }
+      if (details.includes('ESCHOOL_CALLBACK_URL')) {
+        return res.status(503).json({ error: 'Dans Render, ESCHOOL_CALLBACK_URL doit être une URL HTTPS terminant par /api/payments/yabiso-callback.', code: 'PAYMENT_CALLBACK_CONFIG_INVALID' })
       }
       if (providerHttpError) {
         return res.status(502).json({ error: `Le prestataire de paiement a refusé la demande (HTTP ${providerHttpError[1]}). Réessayez plus tard ou contactez l’administrateur.`, code: 'PAYMENT_PROVIDER_REJECTED' })
