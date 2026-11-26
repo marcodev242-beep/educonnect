@@ -139,6 +139,7 @@ export const ensureExamSchema = async (pool: pg.Pool): Promise<void> => {
       id_paiement_examen TEXT PRIMARY KEY
         DEFAULT ('PX' || lpad(nextval('paiements_examens_id_seq')::text, 9, '0')),
       reference TEXT NOT NULL UNIQUE,
+      reference_groupe TEXT,
       reference_externe TEXT,
       type_paiement TEXT NOT NULL,
       id_examen TEXT REFERENCES examens(id_examen) ON DELETE CASCADE,
@@ -150,6 +151,10 @@ export const ensureExamSchema = async (pool: pg.Pool): Promise<void> => {
       date_initiation TIMESTAMPTZ,
       date_traitement TIMESTAMPTZ
     );
+
+    ALTER TABLE paiements_examens ADD COLUMN IF NOT EXISTS reference_groupe TEXT;
+    CREATE INDEX IF NOT EXISTS idx_paiements_examens_reference_groupe
+      ON paiements_examens (reference_groupe);
 
     ALTER TABLE paiements_examens DROP CONSTRAINT IF EXISTS paiements_examens_type_check;
     ALTER TABLE paiements_examens ADD CONSTRAINT paiements_examens_type_check

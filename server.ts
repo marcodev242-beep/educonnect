@@ -1755,7 +1755,7 @@ app.post('/api/payments/yabiso-callback', async (req, res) => {
       const externalReference = req.body.IDTrans_Extern || req.body.idTrans_Extern || req.body.IDTRANS_EXTERN || null
       const examPaymentResult = await client.query(
         `SELECT * FROM paiements_examens
-         WHERE reference = ANY($1::text[]) OR reference_externe = ANY($1::text[])
+         WHERE reference = ANY($1::text[]) OR reference_groupe = ANY($1::text[]) OR reference_externe = ANY($1::text[])
          ORDER BY date_creation DESC
          FOR UPDATE`,
         [referenceCandidates],

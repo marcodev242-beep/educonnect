@@ -167,7 +167,7 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
         return res.json({ status: latest.rows[0]?.statut || 'FAILED' })
       }
 
-      const references = [...new Set([payment.reference, payment.reference_externe].filter(Boolean))] as string[]
+      const references = [...new Set([payment.reference_groupe, payment.reference, payment.reference_externe].filter(Boolean))] as string[]
       let providerStatus: any
       let lastError: unknown
       for (const candidate of references) {
@@ -478,6 +478,7 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
     const phone = normalizePhone(req.body.phone)
     if (!phone) return res.status(400).json({ error: 'Un numéro Airtel Money est requis.' })
     const reference = buildReference('EXA')
+    const referenceGroupe = buildReference('EXG')
     try {
       const exam = await findExam(normalizeText(req.params.examId))
       if (!exam) return res.status(404).json({ error: 'Examen introuvable' })
@@ -504,11 +505,11 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
 
       await pool.query(
         `INSERT INTO paiements_examens
-          (reference, type_paiement, id_examen, id_eleve, id_enseignant, montant)
-         VALUES ($1, 'INSCRIPTION', $2, $3, $4, $5)`,
-        [reference, exam.id_examen, auth.id, exam.id_enseignant, montant],
+          (reference, reference_groupe, type_paiement, id_examen, id_eleve, id_enseignant, montant)
+         VALUES ($1, $2, 'INSCRIPTION', $3, $4, $5, $6)`,
+        [reference, referenceGroupe, exam.id_examen, auth.id, exam.id_enseignant, montant],
       )
-      const externalReference = await requestYabisoPayment(reference, reference, montant, phone, 'airtel')
+      const externalReference = await requestYabisoPayment(referenceGroupe, reference, montant, phone, 'airtel')
       await pool.query(
         `UPDATE paiements_examens SET reference_externe = $1, date_initiation = NOW() WHERE reference = $2`,
         [externalReference, reference],

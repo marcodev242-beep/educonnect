@@ -68,6 +68,10 @@ export function ExamPaymentModal({
 
       setMessage("Confirmez le paiement sur votre téléphone, puis gardez cette fenêtre ouverte.");
 
+      // Laisse à YabisoPay le temps d’enregistrer la transaction, comme pour
+      // le paiement des sujets, avant d’interroger son statut.
+      await new Promise((resolve) => window.setTimeout(resolve, 10_000));
+
       const verificationTimeoutMs = 60_000;
       const pollingIntervalMs = 3_000;
       const startedAt = Date.now();
@@ -77,6 +81,10 @@ export function ExamPaymentModal({
           method: "GET",
           credentials: "include",
         });
+        if (!statusRes.ok) {
+          await new Promise((r) => setTimeout(r, pollingIntervalMs));
+          continue;
+        }
         const statusData = await statusRes.json().catch(() => ({}));
         const providerStatus = String(statusData.status || "");
 
