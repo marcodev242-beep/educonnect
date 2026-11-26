@@ -31,7 +31,11 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
       const data = await res.json();
       setExam(data.exam || data);
       const enrollmentStatus = data.enrollment?.statut;
-      if (["PAYE", "GRATUIT_ABONNEMENT"].includes(enrollmentStatus)) setEnrollmentStatus("paid");
+      const loadedExam = data.exam || data;
+      if (enrollmentStatus === "DEMANDE_ANNULATION") setEnrollmentStatus("enrolled");
+      else if (["PAYE", "GRATUIT_ABONNEMENT"].includes(enrollmentStatus)) {
+        setEnrollmentStatus(Number(loadedExam.prix_inscription || 0) <= 0 ? "enrolled" : "paid");
+      }
       else if (enrollmentStatus === "EN_ATTENTE_PAIEMENT") setEnrollmentStatus("payment_required");
       else setEnrollmentStatus("idle");
     } catch (error) {
@@ -74,7 +78,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
         toast.success("Inscription confirmée (accès via abonnement)");
         fetchExam();
       } else {
-        setEnrollmentStatus("paid");
+        setEnrollmentStatus("enrolled");
         toast.success("Inscription confirmée (examen gratuit)");
         fetchExam();
       }
@@ -203,7 +207,7 @@ export function ExamDetailPage({ onLogout, onFeed, user, examId }: ExamDetailPag
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                     <div>
                       <p className="text-sm font-bold text-slate-800">Déjà inscrit</p>
-                      <p className="text-xs text-emerald-600">Vous pouvez déposer votre copie quand l'examen sera en cours.</p>
+                      <p className="text-xs text-emerald-600">{isFree ? "Votre inscription gratuite est confirmée." : "Votre accès via abonnement est confirmé."} Vous pourrez déposer votre copie quand l'examen sera en cours.</p>
                     </div>
                   </div>
                 ) : enrollmentStatus === "paid" ? (

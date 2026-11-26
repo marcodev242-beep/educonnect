@@ -442,6 +442,37 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
     }
   })
 
+  app.post('/api/exams/:examId/cancellation-request', requireAuth, requireRole('student'), async (req, res) => {
+    const auth = (req as any).auth as SessionUser
+    try {
+      const exam = await findExam(normalizeText(req.params.examId))
+      if (!exam) return res.status(404).json({ error: 'Examen introuvable' })
+      if (exam.statut !== 'ANNOUNCE' || isPast(exam.date_debut)) {
+        return res.status(409).json({ error: 'La demande d’annulation doit être faite avant le début de l’examen.' })
+      }
+      const result = await pool.query(
+        `UPDATE inscriptions_examens SET statut = 'DEMANDE_ANNULATION'
+         WHERE id_examen = $1 AND id_eleve = $2
+           AND statut IN ('PAYE', 'GRATUIT_ABONNEMENT', 'EN_ATTENTE_PAIEMENT')
+         RETURNING *`,
+        [exam.id_examen, auth.id],
+      )
+      if (!result.rowCount) {
+        const existing = await pool.query(
+          'SELECT statut FROM inscriptions_examens WHERE id_examen = $1 AND id_eleve = $2 LIMIT 1',
+          [exam.id_examen, auth.id],
+        )
+        if (!existing.rowCount) return res.status(404).json({ error: 'Inscription introuvable' })
+        if (existing.rows[0].statut === 'DEMANDE_ANNULATION') return res.json({ enrollment: existing.rows[0] })
+        return res.status(409).json({ error: 'Cette inscription ne peut plus être annulée.' })
+      }
+      res.json({ enrollment: result.rows[0] })
+    } catch (error) {
+      console.error('Erreur demande annulation inscription:', error)
+      res.status(500).json({ error: 'Impossible d’envoyer la demande d’annulation' })
+    }
+  })
+
   app.post('/api/exams/:examId/payments/initiate', requireAuth, requireRole('student'), async (req, res) => {
     const auth = (req as any).auth as SessionUser
     const phone = normalizePhone(req.body.phone)

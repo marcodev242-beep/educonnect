@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 export function StudentExamSessionPage({ examId, user, onLogout, onBack }: { examId: string; user: { id: string; name: string; role: string }; onLogout: () => void; onBack: () => void }) {
   const [data, setData] = useState<any>(null);
+  const [copies, setCopies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const load = useCallback(async () => {
@@ -15,6 +16,11 @@ export function StudentExamSessionPage({ examId, user, onLogout, onBack }: { exa
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Impossible de charger la session");
       setData(body);
+      const copiesResponse = await fetch(apiUrl(`/api/exams/${encodeURIComponent(examId)}/submissions`), { credentials: "include", cache: "no-store" });
+      if (copiesResponse.ok) {
+        const copiesBody = await copiesResponse.json();
+        setCopies(copiesBody.submissions || []);
+      }
     } catch (error) { toast.error(error instanceof Error ? error.message : "Erreur de chargement"); }
     finally { setLoading(false); }
   }, [examId]);
@@ -44,5 +50,6 @@ export function StudentExamSessionPage({ examId, user, onLogout, onBack }: { exa
       {paid && open ? <div className="mt-7 rounded-2xl bg-emerald-50 p-5"><h2 className="font-black text-emerald-950">Sujet de l’épreuve</h2><div className="mt-3 flex flex-wrap gap-2">{(Array.isArray(exam.fichiers_sujets) ? exam.fichiers_sujets : []).map((file: any, index: number) => <a key={index} href={apiUrl(`/api/exams/${encodeURIComponent(examId)}/subjects/${index}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-emerald-800"><FileText size={16}/>{file.name || `Sujet ${index + 1}`}</a>)}{!exam.fichiers_sujets?.length && exam.url_sujet && <a href={apiUrl(`/api/exams/${encodeURIComponent(examId)}/subjects/0`)} className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-bold text-emerald-800"><FileText size={16}/>Télécharger le sujet</a>}</div>
         <div className="mt-5 flex flex-wrap gap-3"><label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 font-bold text-white ${uploading ? "opacity-50" : ""}`}><Upload size={17}/>{uploading ? "Envoi…" : "Téléverser mes copies"}<input type="file" multiple accept=".pdf,image/*,.doc,.docx" className="hidden" disabled={uploading} onChange={event => { uploadCopies(event.target.files); event.currentTarget.value = ""; }}/></label><label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-bold text-white ${uploading ? "opacity-50" : ""}`}><Camera size={17}/>Prendre une photo<input type="file" accept="image/*" capture="environment" className="hidden" disabled={uploading} onChange={event => { uploadCopies(event.target.files); event.currentTarget.value = ""; }}/></label></div><p className="mt-3 text-xs text-emerald-900">Vous pouvez déposer une copie maintenant, puis ajouter d’autres pages avant la fin de l’épreuve.</p>
       </div> : !paid ? <p className="mt-7 rounded-xl bg-amber-50 p-4 font-semibold text-amber-900">Votre inscription doit être confirmée avant d’accéder au sujet et au dépôt des copies.</p> : <p className="mt-7 rounded-xl bg-slate-100 p-4 font-semibold text-slate-700">La session est terminée. Le dépôt des copies est fermé.</p>}
+      {copies.length > 0 && <section className="mt-6 rounded-2xl border border-slate-200 p-5"><div className="flex items-center justify-between gap-3"><div><h2 className="font-black text-slate-900">Mes copies envoyées</h2><p className="mt-1 text-xs text-slate-500">Toutes vos pages et tous vos envois pour cet examen sont réunis ici.</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{copies.length}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{copies.map((copy: any, index: number) => { const fileUrl = apiUrl(`/api/exams/${encodeURIComponent(examId)}/submissions/${encodeURIComponent(copy.id_copie)}/file`); return <div key={copy.id_copie} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50"><p className="truncate px-3 py-2 text-xs font-bold text-slate-700">Copie {index + 1} · {copy.nom_fichier || "Fichier envoyé"}</p>{String(copy.type_fichier || "").startsWith("image/") ? <a href={fileUrl} target="_blank" rel="noreferrer"><img crossOrigin="use-credentials" src={fileUrl} alt={`Ma copie ${index + 1}`} className="max-h-80 w-full bg-white object-contain" /></a> : <a className="block px-3 pb-3 text-sm font-bold text-blue-700 underline" href={fileUrl} target="_blank" rel="noreferrer">Ouvrir cette copie</a>}</div>; })}</div></section>}
     </section></main></div>;
 }

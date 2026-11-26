@@ -64,7 +64,7 @@ export const ensureExamSchema = async (pool: pg.Pool): Promise<void> => {
 
     ALTER TABLE inscriptions_examens DROP CONSTRAINT IF EXISTS inscriptions_examens_statut_check;
     ALTER TABLE inscriptions_examens ADD CONSTRAINT inscriptions_examens_statut_check
-      CHECK (statut IN ('EN_ATTENTE_PAIEMENT', 'PAYE', 'GRATUIT_ABONNEMENT', 'ANNULE'));
+      CHECK (statut IN ('EN_ATTENTE_PAIEMENT', 'PAYE', 'GRATUIT_ABONNEMENT', 'DEMANDE_ANNULATION', 'ANNULE'));
 
     CREATE INDEX IF NOT EXISTS idx_inscriptions_eleve
       ON inscriptions_examens (id_eleve, date_inscription);

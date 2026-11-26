@@ -114,7 +114,7 @@ export interface TeacherTransaction {
    ============================================================ */
 
 export type ExamStatut = 'ANNOUNCE' | 'EN_COURS' | 'TERMINE' | 'ANNULE';
-export type InscriptionStatut = 'EN_ATTENTE_PAIEMENT' | 'PAYE' | 'GRATUIT_ABONNEMENT' | 'ANNULE';
+export type InscriptionStatut = 'EN_ATTENTE_PAIEMENT' | 'PAYE' | 'GRATUIT_ABONNEMENT' | 'DEMANDE_ANNULATION' | 'ANNULE';
 export type CopyStatut = 'DEPOSEE' | 'CORRIGEE' | 'PUBLIE';
 export type PaiementStatut = 'PENDING' | 'SUCCESS' | 'FAILED';
 

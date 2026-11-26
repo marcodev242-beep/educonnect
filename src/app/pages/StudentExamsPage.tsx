@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronLeft, CalendarDays, Radio, ClipboardList, GraduationCap, Clock3, WalletCards } from "lucide-react";
+import { ChevronLeft, CalendarDays, Radio, ClipboardList, GraduationCap, Clock3, WalletCards, XCircle } from "lucide-react";
 import { DashboardHeader } from "../components/DashboardHeader";
 import { ExamPaymentModal } from "../components/ExamPaymentModal";
 import { ExamCountdown } from "../components/ExamCountdown";
@@ -58,10 +58,26 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
     setPaymentModalOpen(true);
   };
 
+  const requestCancellation = async (examId: string) => {
+    try {
+      const response = await fetch(apiUrl(`/api/exams/${encodeURIComponent(examId)}/cancellation-request`), {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Demande impossible");
+      toast.success("Votre demande d’annulation a été envoyée.");
+      await fetchExams();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Demande impossible");
+    }
+  };
+
   const statutLabels: Record<string, string> = {
     EN_ATTENTE_PAIEMENT: "En attente de paiement",
     PAYE: "Payé",
     GRATUIT_ABONNEMENT: "Gratuit (abonnement)",
+    DEMANDE_ANNULATION: "Annulation demandée",
     ANNULE: "Annulé",
   };
 
@@ -106,8 +122,10 @@ export function StudentExamsPage({ onLogout, onFeed, onExamCatalog, initialTab =
         {activeTab === "announced" || activeTab === "live" ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {(activeTab === "announced" ? announcedExams : liveExams).length === 0 ? <div className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white/80 p-12 text-center"><p className="font-bold text-slate-700">{activeTab === "announced" ? "Aucun examen annoncé pour le moment" : "Aucune session en cours"}</p><p className="mt-2 text-sm text-slate-500">Cette liste se met à jour automatiquement.</p></div> : (activeTab === "announced" ? announcedExams : liveExams).map(exam => {
-              const registered = exams.some(item => item.id_examen === exam.id_examen);
-              return <article key={exam.id_examen} className="group relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div className={`absolute inset-x-0 top-0 h-1 ${activeTab === "live" ? "bg-gradient-to-r from-emerald-500 to-teal-400" : "bg-gradient-to-r from-amber-400 to-orange-300"}`} /><div className="flex items-center justify-between gap-2 pt-1"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${activeTab === "live" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{activeTab === "live" ? "Session ouverte" : "Examen annoncé"}</span>{registered && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">Inscrit</span>}</div><h2 className="mt-4 text-xl font-black leading-tight text-slate-900">{exam.titre}</h2><p className="mt-2 text-sm font-semibold text-slate-600">{exam.nom_matiere || "Matière"} <span className="text-slate-300">·</span> Niveau {exam.nom_classe || "—"}</p><div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Début</p><p className="mt-1 text-xs font-bold text-slate-800">{new Date(exam.date_debut).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Durée · Prix</p><p className="mt-1 text-xs font-bold text-slate-800">{exam.duree_minutes} min · {Number(exam.prix_inscription || 0).toLocaleString("fr-FR")} FCFA</p></div></div>{activeTab === "live" && <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-black text-emerald-900"><Clock3 size={14}/> Temps restant</div><ExamCountdown endsAt={exam.date_fin}/></div>}<button onClick={() => { if (activeTab === "live" && registered) onOpenSession?.(exam); else if (registered) setActiveTab("registered"); else onSelectExam?.(exam); }} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3.5 text-xs font-black text-white transition hover:bg-emerald-800">{activeTab === "live" && registered ? "Ouvrir ma session" : activeTab === "live" ? "Voir les informations" : registered ? "Voir mon inscription" : "Consulter et s’inscrire"}<span aria-hidden="true">→</span></button></article>;
+              const registeredExam = exams.find(item => item.id_examen === exam.id_examen);
+              const registered = Boolean(registeredExam && registeredExam.statut_inscription !== "ANNULE");
+              const cancellationRequested = registeredExam?.statut_inscription === "DEMANDE_ANNULATION";
+              return <article key={exam.id_examen} className="group relative overflow-hidden rounded-[24px] border border-white/80 bg-white/90 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-xl"><div className={`absolute inset-x-0 top-0 h-1 ${activeTab === "live" ? "bg-gradient-to-r from-emerald-500 to-teal-400" : "bg-gradient-to-r from-amber-400 to-orange-300"}`} /><div className="flex items-center justify-between gap-2 pt-1"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wide ${activeTab === "live" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{activeTab === "live" ? "Session ouverte" : "Examen annoncé"}</span>{registered && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">Déjà inscrit</span>}</div><h2 className="mt-4 text-xl font-black leading-tight text-slate-900">{exam.titre}</h2><p className="mt-2 text-sm font-semibold text-slate-600">{exam.nom_matiere || "Matière"} <span className="text-slate-300">·</span> Niveau {exam.nom_classe || "—"}</p><div className="mt-5 grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Début</p><p className="mt-1 text-xs font-bold text-slate-800">{new Date(exam.date_debut).toLocaleString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Durée · Prix</p><p className="mt-1 text-xs font-bold text-slate-800">{exam.duree_minutes} min · {Number(exam.prix_inscription || 0).toLocaleString("fr-FR")} FCFA</p></div></div>{activeTab === "live" && <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3"><div className="mb-2 flex items-center gap-2 text-xs font-black text-emerald-900"><Clock3 size={14}/> Temps restant</div><ExamCountdown endsAt={exam.date_fin}/></div>}{registered && activeTab === "announced" && (cancellationRequested ? <p className="mt-4 rounded-xl bg-amber-50 p-3 text-center text-xs font-bold text-amber-800">Demande d’annulation envoyée</p> : <button onClick={() => void requestCancellation(exam.id_examen)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-xs font-black text-red-700 transition hover:bg-red-50"><XCircle size={15}/> Demander l’annulation</button>)}<button onClick={() => { if (activeTab === "live" && registered) onOpenSession?.(exam); else if (registered) setActiveTab("registered"); else onSelectExam?.(exam); }} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3.5 text-xs font-black text-white transition hover:bg-emerald-800">{activeTab === "live" && registered ? "Ouvrir ma session" : activeTab === "live" ? "Voir les informations" : registered ? "Voir mon inscription" : "Consulter et s’inscrire"}<span aria-hidden="true">→</span></button></article>;
             })}
           </div>
         ) : exams.length === 0 ? (
