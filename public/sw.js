@@ -23,7 +23,10 @@ self.addEventListener("fetch", event => {
 
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok) void caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+      if (response.ok) {
+        const responseToCache = response.clone();
+        void caches.open(CACHE_NAME).then(cache => cache.put(request, responseToCache)).catch(() => undefined);
+      }
       return response;
     })));
   }

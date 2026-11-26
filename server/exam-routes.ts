@@ -522,7 +522,21 @@ export const registerExamRoutes = (deps: ExamRouteDeps): void => {
       await pool.query(`UPDATE paiements_examens SET statut = 'FAILED' WHERE reference = $1`, [reference])
         .catch(() => undefined)
       console.error('Erreur initiation paiement examen:', error)
-      res.status(502).json({ error: "Le paiement n'a pas pu être lancé. Réessayez." })
+      const details = error instanceof Error ? error.message : ''
+      const providerHttpError = details.match(/^YabisoPay HTTP (\d+):/)
+      if (details.includes('Configuration ESchoolAPI manquante') || details.includes('ESCHOOL_CALLBACK_URL')) {
+        return res.status(503).json({ error: 'Le service de paiement est mal configuré. Contactez l’administrateur.', code: 'PAYMENT_CONFIG_ERROR' })
+      }
+      if (providerHttpError) {
+        return res.status(502).json({ error: `Le prestataire de paiement a refusé la demande (HTTP ${providerHttpError[1]}). Réessayez plus tard ou contactez l’administrateur.`, code: 'PAYMENT_PROVIDER_REJECTED' })
+      }
+      if (details.includes('YabisoPay a refusé') || details.includes('YabisoPay n’a pas retourné de référence')) {
+        return res.status(502).json({ error: 'Le prestataire de paiement a refusé la demande. Vérifiez les paramètres du compte marchand ou contactez l’administrateur.', code: 'PAYMENT_PROVIDER_REJECTED' })
+      }
+      if (details.includes('YabisoPay est injoignable')) {
+        return res.status(502).json({ error: 'Le service Airtel Money est momentanément inaccessible. Réessayez plus tard.', code: 'PAYMENT_PROVIDER_UNREACHABLE' })
+      }
+      res.status(502).json({ error: "Le paiement n'a pas pu être lancé. Réessayez.", code: 'PAYMENT_INITIATION_FAILED' })
     }
   })
 // ------------------------------------------------------------- submissions
